@@ -2,20 +2,22 @@ post_install() {
   cat <<'EOF'
 fcitx5-koe installed. Next steps:
 
-1. Models (local mode, ~0.5 GB, skipped for cloud-only):
-   mkdir -p ~/.local/share/koe/models
-   cd ~/.local/share/koe/models
-   for m in sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8:parakeet-v2 \
-            sherpa-onnx-zipformer-vi-30M-int8-2026-02-09:zipformer-vi-30m; do
-     t="${m%%:*}"; d="${m##*:}"
-     curl -fL -o "$t.tar.bz2" \
-       "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/$t.tar.bz2"
-     tar -xjf "$t.tar.bz2" && rm "$t.tar.bz2"
-     mv "$t" "$d"
-   done
+1. Backend. Either run a local server or use a cloud API.
+
+   Local (Qwen3-ASR, ~2.5 GB, needs llama-server with CUDA):
+     mkdir -p ~/.local/share/koe/models
+     cd ~/.local/share/koe/models
+     for f in Qwen3-ASR-1.7B-Q8_0.gguf mmproj-Qwen3-ASR-1.7B-Q8_0.gguf; do
+       curl -fL -o "$f" \
+         "https://huggingface.co/ggml-org/Qwen3-ASR-1.7B-GGUF/resolve/main/$f"
+     done
+     systemctl --user enable --now koe-llama-server.service
+
+   Cloud: skip the above and point ~/.config/koe/config.toml
+   at a cloud profile instead.
 
 2. Config: copy /usr/share/doc/fcitx5-koe/config.example.toml to
-   ~/.config/koe/config.toml and pick the local or cloud profile.
+   ~/.config/koe/config.toml and pick the active profile.
 
 3. Services:
    systemctl --user enable --now koe-daemon.service

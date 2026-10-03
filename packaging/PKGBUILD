@@ -1,15 +1,17 @@
 # Maintainer: tuann04 <voanhtuan2004@gmail.com>
 pkgname=fcitx5-koe
-pkgver=0.2.0
+pkgver=0.1.0
 pkgrel=1
 pkgdesc='Hold-to-talk speech-to-text addon for fcitx5'
 arch=('x86_64')
 url='https://github.com/tuann04/fcitx5-koe'
 license=('MIT')
-depends=('fcitx5' 'pipewire' 'curl' 'nlohmann-json' 'tomlplusplus' 'sherpa-onnx')
-makedepends=('cmake' 'extra-cmake-modules' 'pkgconf' 'gcc' 'make')
+depends=('fcitx5' 'pipewire' 'curl' 'nlohmann-json' 'tomlplusplus')
+makedepends=('cmake' 'extra-cmake-modules' 'pkgconf')
+optdepends=('llama.cpp: local speech recognition backend (llama-server)')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('7a7793b7dc0e1354f06f7c6718a3f2a0c6436677181774f1b625705565ae5277')
+# Maintainer: set the real hash on release, e.g. with `makepkg -g`.
+sha256sums=('SKIP')
 install=$pkgname.install
 
 build() {

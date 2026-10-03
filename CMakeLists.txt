@@ -19,8 +19,8 @@ find_package(Fcitx5Core REQUIRED)
 add_subdirectory(addon)
 add_subdirectory(daemon)
 
-# Distro packaging: user units and an annotated example config.
+# Distro packaging: user units, an annotated example config, and the license.
 install(FILES packaging/koe-daemon.service packaging/koe-llama-server.service
-        DESTINATION lib/systemd/user)
-install(FILES nix/config.example.toml
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/systemd/user)
+install(FILES nix/config.example.toml LICENSE
         DESTINATION ${CMAKE_INSTALL_DOCDIR})

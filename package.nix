@@ -19,6 +19,7 @@ stdenv.mkDerivation {
     root = ./.;
     fileset = lib.fileset.unions [
       ./CMakeLists.txt
+      ./LICENSE
       ./common
       ./addon
       ./daemon
