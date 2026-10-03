@@ -1,0 +1,45 @@
+# koe-daemon configuration.
+#
+# Path: ~/.config/koe/config.toml (or $XDG_CONFIG_HOME/koe/config.toml).
+# If the file is absent, the daemon uses a built-in "local" profile pointing
+# at http://127.0.0.1:8178 with the model "qwen3-asr-1.7b" and a 15 s timeout.
+
+# Name of the profile to use. Must match a [profile.<name>] table below.
+active = "local"
+
+# Hard cap on recording length in seconds. Longer recordings are truncated.
+# Optional, defaults to 120.
+max_record_sec = 120
+
+# Clips quieter than this RMS level (0.0-1.0) are treated as silence and
+# return no text without calling the model. Run `koe-daemon -v` to see the
+# RMS of each clip and tune it. 0 disables the check. Optional, defaults to 0.005.
+min_rms = 0.005
+
+[profile.local]
+# Base URL of an OpenAI-compatible transcription endpoint. The daemon posts a
+# 16 kHz mono WAV to <base_url>/v1/audio/transcriptions.
+base_url = "http://127.0.0.1:8178"
+model = "qwen3-asr-1.7b"
+# Request timeout in seconds. Optional, defaults to 15.
+timeout_sec = 15
+# How often to re-transcribe the audio captured so far and show it as inline
+# preedit while the hotkey is held, in milliseconds. 0 disables it. Values
+# between 1 and 299 are rejected. Optional, defaults to 0 in a config file.
+# The built-in default profile (no config file) uses 700.
+partial_interval_ms = 700
+# Optional text used to bias recognition toward names or jargon. May be empty.
+prompt = ""
+# Optional file containing an API key, with "~" expanded to $HOME. The key is
+# sent as "Authorization: Bearer <key>". Omit for an unauthenticated server.
+# api_key_file = "~/.config/koe/openai.key"
+
+[profile.cloud]
+base_url = "https://api.openai.com"
+model = "gpt-transcribe"
+timeout_sec = 30
+# Partials are disabled for the cloud profile: each partial pass is a paid API
+# call, and the default interval would call the API several times per sentence.
+partial_interval_ms = 0
+# File containing the API key, with "~" expanded to $HOME. Required for cloud.
+api_key_file = "~/.config/koe/openai.key"

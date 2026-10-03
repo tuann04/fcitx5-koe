@@ -1,0 +1,30 @@
+post_install() {
+  cat <<'EOF'
+fcitx5-koe installed. Next steps:
+
+1. Models (local mode, ~0.5 GB, skipped for cloud-only):
+   mkdir -p ~/.local/share/koe/models
+   cd ~/.local/share/koe/models
+   for m in sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8:parakeet-v2 \
+            sherpa-onnx-zipformer-vi-30M-int8-2026-02-09:zipformer-vi-30m; do
+     t="${m%%:*}"; d="${m##*:}"
+     curl -fL -o "$t.tar.bz2" \
+       "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/$t.tar.bz2"
+     tar -xjf "$t.tar.bz2" && rm "$t.tar.bz2"
+     mv "$t" "$d"
+   done
+
+2. Config: copy /usr/share/doc/fcitx5-koe/config.example.toml to
+   ~/.config/koe/config.toml and pick the local or cloud profile.
+
+3. Services:
+   systemctl --user enable --now koe-daemon.service
+
+4. Log out and back in so fcitx5 loads the addon,
+   then hold Right Ctrl in a text field and speak.
+EOF
+}
+
+post_upgrade() {
+  post_install
+}

@@ -1,0 +1,23 @@
+pkgbase = fcitx5-koe
+	pkgdesc = Hold-to-talk speech-to-text addon for fcitx5
+	pkgver = 0.2.0
+	pkgrel = 1
+	url = https://github.com/tuann04/fcitx5-koe
+	install = fcitx5-koe.install
+	arch = x86_64
+	license = MIT
+	makedepends = cmake
+	makedepends = extra-cmake-modules
+	makedepends = pkgconf
+	makedepends = gcc
+	makedepends = make
+	depends = fcitx5
+	depends = pipewire
+	depends = curl
+	depends = nlohmann-json
+	depends = tomlplusplus
+	depends = sherpa-onnx
+	source = fcitx5-koe-0.2.0.tar.gz::https://github.com/tuann04/fcitx5-koe/archive/refs/tags/v0.2.0.tar.gz
+	sha256sums = 7a7793b7dc0e1354f06f7c6718a3f2a0c6436677181774f1b625705565ae5277
+
+pkgname = fcitx5-koe
