@@ -56,7 +56,7 @@ Nix support is kept but not part of the default install.
 | `nix build` | `result/lib/fcitx5/libkoe.so`, `result/share/fcitx5/addon/koe.conf`, `result/bin/koe-daemon` |
 | `nix-build` | Same targets in `result/` for channel-based setups |
 
-`package.nix` is a plain `callPackage` derivation. `scripts/install.sh --nix` and `scripts/dev-run.sh --nix` use it.
+`package.nix` is a plain `callPackage` derivation. `scripts/dev-run.sh --nix` uses it for testing the Nix build.
 
 Sources: [package.nix](../package.nix)
 

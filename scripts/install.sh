@@ -8,10 +8,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$ROOT/result"
 CLOUD_ONLY=0
 DRY_RUN=0
-USE_NIX=0
 NO_DEPS=0
 PREFIX="$HOME/.local"
 
@@ -19,7 +17,6 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --cloud-only) CLOUD_ONLY=1 ;;
     --dry-run) DRY_RUN=1 ;;
-    --nix) USE_NIX=1 ;;
     --native) ;;
     --no-deps) NO_DEPS=1 ;;
     --prefix) PREFIX="$2"; shift ;;
@@ -45,17 +42,6 @@ run() {
     "$@"
   fi
 }
-
-have_nix() { command -v nix >/dev/null 2>&1 || command -v nix-build >/dev/null 2>&1; }
-
-NATIVE=1
-if [ "$USE_NIX" -eq 1 ]; then
-  if ! have_nix; then
-    echo "--nix needs nix installed (https://nixos.org/download)." >&2
-    exit 1
-  fi
-  NATIVE=0
-fi
 
 # ---- native deps (Arch / Ubuntu 24.04+ / Fedora) ----
 install_native_deps() {
@@ -91,31 +77,21 @@ install_native_deps() {
       extra-cmake-modules cmake pkgconf-pkg-config gcc-c++ make curl
   else
     echo "no supported package manager (pacman, apt-get, dnf)." >&2
+    echo "On NixOS, see docs/5-deployment.md (NixOS module)." >&2
     echo "Install by hand: fcitx5 + dev files, pipewire dev, curl dev," >&2
     echo "nlohmann-json dev, tomlplusplus dev, extra-cmake-modules, cmake, pkg-config, a C++ compiler." >&2
     exit 1
   fi
 }
 
-if [ "$NATIVE" -eq 1 ]; then
-  install_native_deps
-  missing=()
-  for cmd in curl systemctl fcitx5 cmake g++ pkg-config; do
-    command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
-  done
-  if [ "${#missing[@]}" -gt 0 ]; then
-    echo "still missing: ${missing[*]}. Install them and re-run with --no-deps." >&2
-    exit 1
-  fi
-else
-  missing=()
-  for cmd in curl systemctl fcitx5; do
-    command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
-  done
-  if [ "${#missing[@]}" -gt 0 ]; then
-    echo "missing tools: ${missing[*]}" >&2
-    exit 1
-  fi
+install_native_deps
+missing=()
+for cmd in curl systemctl fcitx5 cmake g++ pkg-config; do
+  command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
+done
+if [ "${#missing[@]}" -gt 0 ]; then
+  echo "still missing: ${missing[*]}. Install them and re-run with --no-deps." >&2
+  exit 1
 fi
 
 # 1. Models (local mode only).
@@ -132,38 +108,24 @@ fi
 
 # 2. Build.
 BIN=""
-if [ "$NATIVE" -eq 1 ]; then
-  info "native build into $PREFIX..."
-  run cmake -B "$ROOT/build" -S "$ROOT" -DCMAKE_BUILD_TYPE=Release "-DCMAKE_INSTALL_PREFIX=$PREFIX"
-  run cmake --build "$ROOT/build"
-  run cmake --install "$ROOT/build"
-  BIN="$PREFIX/bin/koe-daemon"
-else
-  info "nix build..."
-  if command -v nix >/dev/null 2>&1; then
-    run nix --extra-experimental-features 'nix-command flakes' build "$ROOT#default" --out-link "$OUT"
-  else
-    run nix-build "$ROOT" -o "$OUT"
-  fi
-  BIN="$OUT/bin/koe-daemon"
-fi
+info "build into $PREFIX..."
+run cmake -B "$ROOT/build" -S "$ROOT" -DCMAKE_BUILD_TYPE=Release "-DCMAKE_INSTALL_PREFIX=$PREFIX"
+run cmake --build "$ROOT/build"
+run cmake --install "$ROOT/build"
+BIN="$PREFIX/bin/koe-daemon"
 
 # 3. Install user services.
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
 # Locate the addon dir (multiarch libdir differs per distro).
 ADDON_DIR=""
-if [ "$NATIVE" -eq 1 ]; then
-  if [ "$DRY_RUN" -eq 0 ]; then
-    SO="$(find "$PREFIX" -name 'libkoe.so' 2>/dev/null | head -1)"
-    [ -n "$SO" ] || { echo "libkoe.so not found under $PREFIX, install failed." >&2; exit 1; }
-    ADDON_DIR="$(dirname "$SO")"
-    info "addon dir: $ADDON_DIR"
-  else
-    ADDON_DIR="$PREFIX/lib/fcitx5  (resolved after install)"
-  fi
+if [ "$DRY_RUN" -eq 0 ]; then
+  SO="$(find "$PREFIX" -name 'libkoe.so' 2>/dev/null | head -1)"
+  [ -n "$SO" ] || { echo "libkoe.so not found under $PREFIX, install failed." >&2; exit 1; }
+  ADDON_DIR="$(dirname "$SO")"
+  info "addon dir: $ADDON_DIR"
 else
-  ADDON_DIR="$OUT/lib/fcitx5"
+  ADDON_DIR="$PREFIX/lib/fcitx5  (resolved after install)"
 fi
 
 info "install user services in $UNIT_DIR..."
@@ -233,36 +195,23 @@ run systemctl --user daemon-reload
 run systemctl --user enable --now koe-daemon.service
 
 # Installs outside the default search path need env for fcitx5.
-if [ "$NATIVE" -eq 1 ]; then
-  ENVD_DIR="$HOME/.config/environment.d"
-  info "addon env in $ENVD_DIR..."
-  run mkdir -p "$ENVD_DIR"
-  if [ "$DRY_RUN" -eq 0 ]; then
-    cat > "$ENVD_DIR/koe-fcitx5.conf" <<EOF
+ENVD_DIR="$HOME/.config/environment.d"
+info "addon env in $ENVD_DIR..."
+run mkdir -p "$ENVD_DIR"
+if [ "$DRY_RUN" -eq 0 ]; then
+  cat > "$ENVD_DIR/koe-fcitx5.conf" <<EOF
 FCITX_ADDON_DIRS=$ADDON_DIR
 XDG_DATA_DIRS=$PREFIX/share:/usr/local/share:/usr/share
 EOF
-  else
-    echo "dry-run: write $ENVD_DIR/koe-fcitx5.conf"
-  fi
-  cat <<EOF
+else
+  echo "dry-run: write $ENVD_DIR/koe-fcitx5.conf"
+fi
+cat <<EOF
 
 Done. Log out and back in so fcitx5 picks up the addon path,
 or try it right now without relogin:
 
   FCITX_ADDON_DIRS="$ADDON_DIR" XDG_DATA_DIRS="$PREFIX/share:\$XDG_DATA_DIRS" fcitx5 -rd
-
-Then hold Right Ctrl in a text field and speak.
-Check: systemctl --user status koe-daemon
-EOF
-  exit 0
-fi
-
-cat <<EOF
-
-Done. Restart fcitx5 with the addon once:
-
-  FCITX_ADDON_DIRS="$OUT/lib/fcitx5" XDG_DATA_DIRS="$OUT/share:\$XDG_DATA_DIRS" fcitx5 -rd
 
 Then hold Right Ctrl in a text field and speak.
 Check: systemctl --user status koe-daemon
