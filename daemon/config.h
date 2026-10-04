@@ -18,6 +18,9 @@ struct Config {
     std::string active = "local";
     int maxRecordSec = 120;
     float minRms = 0.005f;
+    std::string saveDir;
+    double saveMinSec = 0.0;
+    double saveKeepDays = 0.0;
     Profile profile;
 };
 

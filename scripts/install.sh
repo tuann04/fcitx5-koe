@@ -100,9 +100,9 @@ if [ "$CLOUD_ONLY" -eq 1 ]; then
 else
   info "models..."
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "dry-run: ./scripts/download-models.sh"
+    echo "dry-run: ./scripts/setup-models.sh download qwen"
   else
-    "$ROOT/scripts/download-models.sh"
+    "$ROOT/scripts/setup-models.sh" download qwen
   fi
 fi
 

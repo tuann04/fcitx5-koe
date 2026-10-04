@@ -131,6 +131,10 @@ bool loadConfig(const std::string &overridePath, Config &out, bool &missing,
     config.maxRecordSec =
         static_cast<int>(table["max_record_sec"].value_or<int64_t>(120));
     config.minRms = static_cast<float>(table["min_rms"].value_or<double>(0.005));
+    config.saveDir =
+        expandHome(table["save_dir"].value_or<std::string>(""));
+    config.saveMinSec = table["save_min_sec"].value_or<double>(0.0);
+    config.saveKeepDays = table["save_keep_days"].value_or<double>(0.0);
 
     config.profile.baseUrl = (*profile)["base_url"].value_or<std::string>("");
     config.profile.model = (*profile)["model"].value_or<std::string>("");
@@ -169,6 +173,14 @@ bool loadConfig(const std::string &overridePath, Config &out, bool &missing,
     }
     if (config.minRms < 0.0f) {
         err = path + ": min_rms must be >= 0";
+        return false;
+    }
+    if (config.saveMinSec < 0.0) {
+        err = path + ": save_min_sec must be >= 0";
+        return false;
+    }
+    if (config.saveKeepDays < 0.0) {
+        err = path + ": save_keep_days must be >= 0";
         return false;
     }
 

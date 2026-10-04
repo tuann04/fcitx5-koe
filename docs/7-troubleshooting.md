@@ -13,6 +13,23 @@
 
 How to find out where a dictation failed, and fixes for problems seen so far.
 
+## Quick check
+
+Run this first. It records one second and sends it to the backend:
+
+```bash
+koe-daemon --check
+```
+
+```text
+config: profile 'local' model 'qwen3-asr-1.7b' at http://127.0.0.1:8178
+mic: RMS 0.089521 over 0.990s (gate 0.005000)
+mic: OK
+backend: OK (195ms, 23 chars)
+```
+
+`mic: QUIET` means your level sits below `min_rms` and dictations are dropped. `backend: FAIL` means the server is down or the model name is wrong. Exit code is 0 only when both pass.
+
 ## Where did it fail?
 
 ```mermaid

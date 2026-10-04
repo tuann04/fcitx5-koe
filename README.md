@@ -41,7 +41,7 @@ flowchart LR
 - Flags: `--no-deps` skips the package install, `--prefix DIR` changes the location, `--dry-run` previews.
 - Log out and back in so fcitx5 sees the addon, then hold **Right Ctrl** in a text field and speak.
 
-Prefer manual steps? Download models with `./scripts/download-models.sh`, then:
+Prefer manual steps? Download models with `./scripts/setup-models.sh download qwen`, then:
 
 ```bash
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/.local"

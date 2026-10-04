@@ -24,7 +24,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <deque>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -32,6 +35,8 @@
 #include <thread>
 #include <utility>
 #include <vector>
+
+#include <nlohmann/json.hpp>
 
 namespace {
 
@@ -92,6 +97,7 @@ struct Job {
     uint64_t clientId = 0;
     std::string lang;
     std::vector<float> pcm;
+    double rms = 0.0;
     bool partial = false;
     std::atomic<bool> cancelled{false};
 };
@@ -147,6 +153,8 @@ public:
         } else {
             recorder_.setErrorCallback([this]() { wake(); });
         }
+
+        pruneSavedClips();
 
         worker_ = std::thread([this]() { workerLoop(); });
         return true;
@@ -506,6 +514,124 @@ private:
         logDebug("-> ERROR " + std::to_string(id) + " " + text);
     }
 
+    static bool isClipStem(const std::string &stem) {
+        // YYYYMMDD-HHMMSS-<id>
+        if (stem.size() < 17 || stem[8] != '-' || stem[15] != '-') {
+            return false;
+        }
+        for (size_t i = 0; i < 15; ++i) {
+            if (i == 8) {
+                continue;
+            }
+            if (stem[i] < '0' || stem[i] > '9') {
+                return false;
+            }
+        }
+        for (size_t i = 16; i < stem.size(); ++i) {
+            if (stem[i] < '0' || stem[i] > '9') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void pruneSavedClips() {
+        if (config_.saveDir.empty() || config_.saveKeepDays <= 0.0) {
+            return;
+        }
+        const auto cutoff = std::filesystem::file_time_type::clock::now() -
+                            std::chrono::duration<double>(config_.saveKeepDays *
+                                                          86400.0);
+        std::error_code ec;
+        std::filesystem::directory_iterator it(config_.saveDir, ec);
+        if (ec) {
+            return;
+        }
+        for (const auto &entry : it) {
+            if (!entry.is_regular_file(ec)) {
+                continue;
+            }
+            const std::string name = entry.path().filename().string();
+            const std::string ext = entry.path().extension().string();
+            if (ext != ".wav" && ext != ".json") {
+                continue;
+            }
+            if (!isClipStem(entry.path().stem().string())) {
+                continue;
+            }
+            const auto mtime = entry.last_write_time(ec);
+            if (ec || mtime >= cutoff) {
+                continue;
+            }
+            const std::string base =
+                (entry.path().parent_path() /
+                 entry.path().stem()).string();
+            std::filesystem::remove(base + ".wav", ec);
+            std::filesystem::remove(base + ".json", ec);
+            logDebug("pruned saved clip " + base);
+        }
+    }
+
+    void saveClip(const Job &job, const std::string &text) {
+        if (config_.saveDir.empty()) {
+            return;
+        }
+        const double seconds = job.pcm.size() / 16000.0;
+        if (seconds < config_.saveMinSec) {
+            return;
+        }
+        std::error_code ec;
+        std::filesystem::create_directories(config_.saveDir, ec);
+        if (ec) {
+            logError("cannot create save_dir '" + config_.saveDir +
+                     "': " + ec.message());
+            return;
+        }
+        const std::time_t now = std::time(nullptr);
+        std::tm tm{};
+        localtime_r(&now, &tm);
+        char stamp[16];
+        std::strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", &tm);
+        const std::string base = config_.saveDir + "/" + stamp + "-" +
+                                 std::to_string(job.id);
+
+        const std::string wav = koe::encodeWav(job.pcm);
+        std::ofstream audio(base + ".wav", std::ios::binary);
+        if (!audio) {
+            logError("cannot write " + base + ".wav");
+            return;
+        }
+        audio.write(wav.data(), static_cast<std::streamsize>(wav.size()));
+        audio.close();
+        if (!audio) {
+            logError("cannot write " + base + ".wav");
+            return;
+        }
+
+        const nlohmann::json meta = {
+            {"id", job.id},
+            {"time", stamp},
+            {"lang", job.lang},
+            {"profile", config_.active},
+            {"model", config_.profile.model},
+            {"duration_s", seconds},
+            {"rms", job.rms},
+            {"text", text},
+        };
+        std::ofstream sidecar(base + ".json", std::ios::binary);
+        if (!sidecar) {
+            logError("cannot write " + base + ".json");
+            return;
+        }
+        sidecar << meta.dump(2);
+        sidecar.close();
+        if (!sidecar) {
+            logError("cannot write " + base + ".json");
+            return;
+        }
+        pruneSavedClips();
+    }
+
     void sendPartial(Client *client, uint64_t id, const std::string &text) {
         koe::Message message;
         message.type = koe::Message::Type::Partial;
@@ -615,7 +741,7 @@ private:
             return;
         }
 
-        enqueueJob(id, clientId, std::move(lang), std::move(pcm), false);
+        enqueueJob(id, clientId, std::move(lang), std::move(pcm), rms, false);
     }
 
     void handleCancel(const koe::Message &message, Client *client) {
@@ -653,12 +779,13 @@ private:
     }
 
     void enqueueJob(uint64_t id, uint64_t clientId, std::string lang,
-                    std::vector<float> pcm, bool partial) {
+                    std::vector<float> pcm, double rms, bool partial) {
         auto job = std::make_shared<Job>();
         job->id = id;
         job->clientId = clientId;
         job->lang = std::move(lang);
         job->pcm = std::move(pcm);
+        job->rms = rms;
         job->partial = partial;
         jobs_.push_back(job);
         {
@@ -725,7 +852,7 @@ private:
         }
 
         enqueueJob(id, recording_.clientId, recording_.lang, std::move(pcm),
-                   true);
+                   rms, true);
     }
 
     int pollTimeoutMs() const {
@@ -779,6 +906,9 @@ private:
                 continue;
             }
             if (result.ok) {
+                if (!result.text.empty()) {
+                    saveClip(*result.job, result.text);
+                }
                 sendText(client, result.job->id, result.text);
             } else {
                 sendError(client, result.job->id, result.error);
@@ -883,7 +1013,64 @@ private:
 
 void usage(const char *program) {
     std::cerr << "usage: " << program
-              << " [--config <path>] [--socket <path>] [-v]\n";
+              << " [--config <path>] [--socket <path>] [-v] [--check]\n";
+}
+
+// Records one second of mic audio and sends it to the configured backend,
+// reporting what a real dictation would do. Exit 0 when both work.
+int runCheck(const koe::Config &config) {
+    int failures = 0;
+    std::cout << "config: profile '" << config.active << "' model '" +
+                     config.profile.model + "' at " + config.profile.baseUrl +
+                     "\n";
+
+    koe::Recorder recorder;
+    recorder.setMaxSamples(static_cast<size_t>(config.maxRecordSec) * 16000);
+    std::string audioErr;
+    if (!recorder.init(audioErr)) {
+        std::cout << "mic: FAIL (" << audioErr << ")\n";
+        return 1;
+    }
+    std::string startErr;
+    if (!recorder.start(startErr)) {
+        std::cout << "mic: FAIL (cannot start: " << startErr << ")\n";
+        recorder.shutdown();
+        return 1;
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::vector<float> pcm = recorder.stop();
+    recorder.shutdown();
+    if (pcm.empty()) {
+        std::cout << "mic: FAIL (no audio captured)\n";
+        return 1;
+    }
+    const double rms = clipRms(pcm);
+    std::cout << "mic: RMS " + formatRms(rms) + " over " +
+                     formatSeconds(pcm.size()) + "s (gate " +
+                     formatRms(config.minRms) + ")\n";
+    if (config.minRms > 0.0f && rms < static_cast<double>(config.minRms)) {
+        std::cout << "mic: QUIET (below min_rms, dictations will be dropped; "
+                     "speak louder or lower min_rms)\n";
+        ++failures;
+    } else {
+        std::cout << "mic: OK\n";
+    }
+
+    koe::Transcriber transcriber(config.profile);
+    const std::atomic<bool> stop{false};
+    const auto start = std::chrono::steady_clock::now();
+    koe::TranscribeResult result = transcriber.run(pcm, "auto", stop);
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - start)
+                        .count();
+    if (!result.ok) {
+        std::cout << "backend: FAIL (" << result.error << ")\n";
+        ++failures;
+    } else {
+        std::cout << "backend: OK (" << ms << "ms, " << result.text.size()
+                  << " chars)\n";
+    }
+    return failures == 0 ? 0 : 1;
 }
 
 } // namespace
@@ -891,11 +1078,14 @@ void usage(const char *program) {
 int main(int argc, char **argv) {
     std::string configPath;
     std::string socketOverride;
+    bool check = false;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-v") {
             g_verbose = true;
+        } else if (arg == "--check") {
+            check = true;
         } else if (arg == "--config" && i + 1 < argc) {
             configPath = argv[++i];
         } else if (arg == "--socket" && i + 1 < argc) {
@@ -940,6 +1130,12 @@ int main(int argc, char **argv) {
     }
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    if (check) {
+        const int status = runCheck(config);
+        curl_global_cleanup();
+        return status;
+    }
 
     Daemon daemon(std::move(config), std::move(socketPath));
     if (!daemon.init(error)) {

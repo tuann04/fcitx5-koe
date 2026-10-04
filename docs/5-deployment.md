@@ -94,7 +94,7 @@ flowchart LR
 | `services.koe.llamaServer.port` | `8178` | |
 | `services.koe.llamaServer.extraArgs` | `[ "-np" "1" "-c" "4096" ]` | One slot, 4096 context, keeps VRAM low |
 
-Model files are kept out of the Nix store on purpose (about 2.5 GB). Download them with `./scripts/download-models.sh`, see the [README](../README.md#quick-start).
+Model files are kept out of the Nix store on purpose (about 2.5 GB). Download them with `./scripts/setup-models.sh download qwen`, see the [README](../README.md#quick-start).
 
 Sources: [nix/module.nix:17-29](../nix/module.nix#L17-L29), [nix/module.nix:32-114](../nix/module.nix#L32-L114), [nix/module.nix:116-161](../nix/module.nix#L116-L161)
 

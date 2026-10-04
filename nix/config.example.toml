@@ -16,6 +16,15 @@ max_record_sec = 120
 # RMS of each clip and tune it. 0 disables the check. Optional, defaults to 0.005.
 min_rms = 0.005
 
+# Save every transcribed clip as timestamped WAV + JSON sidecar for later
+# review (e.g. pronunciation practice). Empty means disabled. Optional.
+# save_dir = "~/.local/share/koe/clips"
+# Clips shorter than this (seconds) are not saved. Optional, defaults to 0.
+# save_min_sec = 1.0
+# Delete saved clips older than this many days on each save and at startup.
+# 0 keeps everything. Optional, defaults to 0.
+# save_keep_days = 30
+
 [profile.local]
 # Base URL of an OpenAI-compatible transcription endpoint. The daemon posts a
 # 16 kHz mono WAV to <base_url>/v1/audio/transcriptions.

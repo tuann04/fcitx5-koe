@@ -18,7 +18,7 @@
 ## Command line
 
 ```
-koe-daemon [--config <path>] [--socket <path>] [-v]
+koe-daemon [--config <path>] [--socket <path>] [-v] [--check]
 ```
 
 | Flag | Default | Effect |
@@ -26,6 +26,9 @@ koe-daemon [--config <path>] [--socket <path>] [-v]
 | `--config` | `$XDG_CONFIG_HOME/koe/config.toml` or `~/.config/koe/config.toml` | Config file. Missing file means built-in local profile |
 | `--socket` | `$XDG_RUNTIME_DIR/koe.sock` | Listening socket |
 | `-v` | off | Debug lines: per-clip RMS, partial scheduling, messages sent |
+| `--check` | - | Record one second, send it to the backend, report mic level and backend result, exit. No socket opened |
+
+`--check` exits 0 when the mic is above `min_rms` and the backend answers, 1 otherwise. It never touches the socket, so it is safe to run while the daemon is already running.
 
 All logs go to stderr with a `koe-daemon:` prefix, so journald captures them under the systemd unit. Transcript text is never logged, only its length.
 
