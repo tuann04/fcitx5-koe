@@ -1,6 +1,6 @@
 # Maintainer: tuann04 <voanhtuan2004@gmail.com>
 pkgname=fcitx5-koe
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc='Hold-to-talk speech-to-text addon for fcitx5'
 arch=('x86_64')

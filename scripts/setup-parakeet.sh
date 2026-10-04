@@ -98,7 +98,7 @@ Restart=on-failure
 RestartSec=5
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target
 EOF
 
 write_unit "$UNIT_DIR/koe-parakeet-shim.service" <<EOF
@@ -113,7 +113,7 @@ Restart=on-failure
 RestartSec=2
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target
 EOF
 
 run systemctl --user daemon-reload

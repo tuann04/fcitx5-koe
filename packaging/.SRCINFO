@@ -1,6 +1,6 @@
 pkgbase = fcitx5-koe
 	pkgdesc = Hold-to-talk speech-to-text addon for fcitx5
-	pkgver = 0.1.0
+	pkgver = 0.1.1
 	pkgrel = 1
 	url = https://github.com/tuann04/fcitx5-koe
 	install = fcitx5-koe.install
@@ -15,7 +15,7 @@ pkgbase = fcitx5-koe
 	depends = nlohmann-json
 	depends = tomlplusplus
 	optdepends = llama.cpp: local speech recognition backend (llama-server)
-	source = fcitx5-koe-0.1.0.tar.gz::https://github.com/tuann04/fcitx5-koe/archive/refs/tags/v0.1.0.tar.gz
+	source = fcitx5-koe-0.1.1.tar.gz::https://github.com/tuann04/fcitx5-koe/archive/refs/tags/v0.1.1.tar.gz
 	sha256sums = SKIP
 
 pkgname = fcitx5-koe

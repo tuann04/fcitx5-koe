@@ -91,7 +91,7 @@ Restart=on-failure
 RestartSec=5
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target
 EOF
 
 run systemctl --user daemon-reload

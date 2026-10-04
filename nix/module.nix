@@ -120,8 +120,8 @@ in
 
     systemd.user.services.koe-daemon = {
       description = "koe speech-to-text daemon for fcitx5";
-      wantedBy = [ "graphical-session.target" ];
-      partOf = [ "graphical-session.target" ];
+      wantedBy = [ "default.target" ];
+      partOf = [ "default.target" ];
       after = [ "pipewire.service" ]
         ++ optional cfg.llamaServer.enable "koe-llama-server.service";
       wants = [ "pipewire.service" ]
@@ -135,8 +135,8 @@ in
 
     systemd.user.services.koe-llama-server = mkIf cfg.llamaServer.enable {
       description = "llama-server running Qwen3-ASR for koe";
-      wantedBy = [ "graphical-session.target" ];
-      partOf = [ "graphical-session.target" ];
+      wantedBy = [ "default.target" ];
+      partOf = [ "default.target" ];
       serviceConfig = {
         ExecStart = "${cfg.llamaServer.package}/bin/llama-server "
           + escapeShellArgs (

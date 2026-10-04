@@ -171,7 +171,7 @@ Restart=on-failure
 RestartSec=2
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target
 EOF
 
 if [ "$CLOUD_ONLY" -eq 0 ]; then
@@ -186,7 +186,7 @@ Restart=on-failure
 RestartSec=5
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target
 EOF
   run systemctl --user daemon-reload
   run systemctl --user enable --now koe-llama-server.service

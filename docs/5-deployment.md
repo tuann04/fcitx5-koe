@@ -78,8 +78,8 @@ flowchart LR
     M --> U2["systemd user unit<br/>koe-daemon"]
     U2 -- "after/wants" --> U1
     U2 -- "after/wants" --> PWS["pipewire.service"]
-    GS["graphical-session.target"] -- "wantedBy / partOf" --> U1
-    GS -- "wantedBy / partOf" --> U2
+    DT["default.target"] -- "wantedBy / partOf" --> U1
+    DT -- "wantedBy / partOf" --> U2
 ```
 
 | Option | Default | Notes |
